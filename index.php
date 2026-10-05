@@ -23,8 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             try {
                 $statement = $pdo->prepare(
-                    'INSERT INTO comments (post_id, user_id, content)
-                     VALUES (:post_id, :user_id, :content)'
+                    'INSERT INTO comments (post_id, user_id, content) VALUES (:post_id, :user_id, :content)'
                 );
                 $statement->execute([
                     ':post_id' => $commentPostId,
@@ -52,8 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             try {
                 $statement = $pdo->prepare(
-                    'INSERT INTO posts (user_id, title, content)
-                     VALUES (:user_id, :title, :content)'
+                    'INSERT INTO posts (user_id, title, content) VALUES (:user_id, :title, :content)'
                 );
                 $statement->execute([
                     ':user_id' => $currentUserId,
@@ -79,6 +77,7 @@ $postsStatement = $pdo->prepare(
 );
 $postsStatement->execute();
 $posts = $postsStatement;
+
 $commentsStatement = $pdo->prepare(
     'SELECT comments.*, users.email AS commenter_email
      FROM comments
@@ -97,11 +96,11 @@ function escapeHtml(string $value): string
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Blog</title>
+    <title>Blog Feed</title>
 </head>
 <body>
     <header>
-        <h1>Blog</h1>
+        <h1>Blog Feed</h1>
         <form method="post" action="logout.php">
             <input type="hidden" name="csrf_token" value="<?= escapeHtml(csrfToken()) ?>">
             <button type="submit">Log out</button>
@@ -113,16 +112,19 @@ function escapeHtml(string $value): string
             <h2>Write a post</h2>
 
             <?php if ($error !== ''): ?>
-                <p><?= escapeHtml($error) ?></p>
+                <p style="color: red;"><?= escapeHtml($error) ?></p>
             <?php endif; ?>
 
             <form method="post" action="index.php">
                 <input type="hidden" name="csrf_token" value="<?= escapeHtml(csrfToken()) ?>">
-                <label for="title">Title</label>
-                <input type="text" id="title" name="title"
-                       value="<?= escapeHtml($title) ?>" maxlength="255" required>
-                <label for="content">Post</label>
-                <textarea id="content" name="content" rows="6" maxlength="10000" required><?= escapeHtml($content) ?></textarea>
+                <div>
+                    <label for="title">Title</label><br>
+                    <input type="text" id="title" name="title" value="<?= escapeHtml($title) ?>" maxlength="255" required>
+                </div>
+                <div>
+                    <label for="content">Post Content</label><br>
+                    <textarea id="content" name="content" rows="6" maxlength="10000" required><?= escapeHtml($content) ?></textarea>
+                </div>
                 <button type="submit">Publish</button>
             </form>
         </section>
@@ -131,7 +133,7 @@ function escapeHtml(string $value): string
             <h2>Recent posts</h2>
 
             <?php while ($post = $posts->fetch()): ?>
-                <article>
+                <article style="border: 1px solid #ccc; padding: 15px; margin-bottom: 20px;">
                     <h3><?= escapeHtml((string) $post['title']) ?></h3>
                     <p>
                         By <?= escapeHtml((string) ($post['author_email'] ?? 'Unknown author')) ?>
@@ -143,22 +145,22 @@ function escapeHtml(string $value): string
                     <p><?= nl2br(escapeHtml((string) $post['content'])) ?></p>
 
                     <?php if ((int) $post['user_id'] === (int) $currentUserId): ?>
-                        <a href="edit-post.php?id=<?= urlencode((string) $post['id']) ?>">Edit</a>
-                        <form method="post" action="delete-post.php">
+                        <a href="edit-post.php?id=<?= urlencode((string) $post['id']) ?>">Edit</a> | 
+                        <form method="post" action="delete-post.php" style="display:inline;">
                             <input type="hidden" name="csrf_token" value="<?= escapeHtml(csrfToken()) ?>">
                             <input type="hidden" name="id" value="<?= (int) $post['id'] ?>">
-                            <button type="submit">Delete post</button>
+                            <button type="submit" onclick="return confirm('Are you sure you want to delete this post?');">Delete post</button>
                         </form>
                     <?php endif; ?>
 
-                    <section>
-                        <h3>Comments</h3>
+                    <section style="margin-top: 15px; border-top: 1px dashed #ddd; padding-top: 10px;">
+                        <h4>Comments</h4>
                         <?php
                         $commentsStatement->execute([':post_id' => $post['id']]);
                         while ($comment = $commentsStatement->fetch()):
                         ?>
-                            <div>
-                                <p>
+                            <div style="margin-bottom: 10px; background: #f9f9f9; padding: 8px;">
+                                <p style="font-size: 0.9em; color: #555;">
                                     By <?= escapeHtml((string) ($comment['commenter_email'] ?? 'Unknown commenter')) ?>
                                     on <?= escapeHtml((string) $comment['created_at']) ?>
                                     <?php if ((int) $comment['is_edited'] === 1): ?>
@@ -168,31 +170,29 @@ function escapeHtml(string $value): string
                                 <p><?= nl2br(escapeHtml((string) $comment['content'])) ?></p>
 
                                 <?php if ((int) $comment['user_id'] === (int) $currentUserId): ?>
-                                    <a href="edit-comment.php?id=<?= urlencode((string) $comment['id']) ?>">Edit</a>
-                                    <form method="post" action="delete-comment.php">
+                                    <a href="edit-comment.php?id=<?= urlencode((string) $comment['id']) ?>">Edit</a> | 
+                                    <form method="post" action="delete-comment.php" style="display:inline;">
                                         <input type="hidden" name="csrf_token" value="<?= escapeHtml(csrfToken()) ?>">
                                         <input type="hidden" name="id" value="<?= (int) $comment['id'] ?>">
-                                        <button type="submit">Delete comment</button>
+                                        <button type="submit" onclick="return confirm('Are you sure you want to delete this comment?');">Delete comment</button>
                                     </form>
                                 <?php endif; ?>
                             </div>
                         <?php endwhile; ?>
 
                         <?php if ($commentPostId === (int) $post['id'] && $commentError !== ''): ?>
-                            <p><?= escapeHtml($commentError) ?></p>
+                            <p style="color: red;"><?= escapeHtml($commentError) ?></p>
                         <?php endif; ?>
 
-                        <form method="post" action="index.php">
+                        <form method="post" action="index.php" style="margin-top: 10px;">
                             <input type="hidden" name="csrf_token" value="<?= escapeHtml(csrfToken()) ?>">
-                            <input type="hidden" name="comment_post_id"
-                                   value="<?= (int) $post['id'] ?>">
-                            <label for="comment-<?= (int) $post['id'] ?>">Add a comment</label>
-                            <textarea id="comment-<?= (int) $post['id'] ?>" name="comment"
-                                      rows="3" maxlength="10000" required><?php
+                            <input type="hidden" name="comment_post_id" value="<?= (int) $post['id'] ?>">
+                            <label for="comment-<?= (int) $post['id'] ?>">Add a comment</label><br>
+                            <textarea id="comment-<?= (int) $post['id'] ?>" name="comment" rows="3" maxlength="10000" required><?php
                                 if ($commentPostId === (int) $post['id']) {
                                     echo escapeHtml($commentContent);
                                 }
-                            ?></textarea>
+                            ?></textarea><br>
                             <button type="submit">Comment</button>
                         </form>
                     </section>
